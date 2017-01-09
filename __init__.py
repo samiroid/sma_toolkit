@@ -65,6 +65,12 @@ def kfolds(n_folds,n_elements,val_set=False,shuffle=False,random_seed=1234):
     return kf
 
 def build_folds(msg_ids, n_folds, folder_path):
+    """
+        Compute partitions for crossfold validation
+        and write the splits into CSV files 
+        Each CSV file will contain the msg ids
+
+    """
     if not os.path.isdir(folder_path):
         os.makedirs(folder_path)
     kf = kfolds(n_folds, len(msg_ids),val_set=True,shuffle=True)
@@ -108,4 +114,36 @@ def shuffle_split(data, split_perc = 0.8, random_seed=1234):
     rng.shuffle(test)    
 
     return train, test
+
+def stratified_sampling(data, n, random_seed=1234):
+    """
+        Get a sample of the data, keeping the class proportions
+
+        data: list of (x,y) tuples
+        n: number of samples
+        random_seed: ensure repeatable shuffles
+
+        returns: balanced sample
+    """
+    rng=np.random.RandomState(random_seed)          
+    z = defaultdict(list)
+    #shuffle data
+    rng.shuffle(data)
+    #group examples by class    
+    z = defaultdict(list)    
+    for x,y in data: z[y].append(x)    
+    #compute class distribution
+    class_dist = {}
+    for cl, samples in z.items():
+        class_dist[cl] = int((len(samples)*1./len(data)) * n)
+    train = []    
+    
+    for label in z.keys():
+        #examples of each label 
+        x_label  = z[label]            
+        train += zip(x_label[:class_dist[label]],
+                    [label] * class_dist[label])             
+    #reshuffle
+    rng.shuffle(train)
+    return train
 
