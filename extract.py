@@ -45,9 +45,9 @@ def features(msgs, labels, wrd2idx, lbl2idx, max_inst=None, split_perc=None):
 		Y     = [x[1] for x in train]
 		X_dev = [x[0] for x in dev]
 		Y_dev = [x[1] for x in dev]
-		return X, Y, X_dev, Y_dev		
+		return X, np.array(Y), X_dev, np.array(Y_dev)		
 	else:
-		return X, Y
+		return X, np.array(Y)
 
 if __name__=="__main__":		
 	parser = get_parser()
