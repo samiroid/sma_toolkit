@@ -164,7 +164,7 @@ if __name__=="__main__":
 													  split_perc=args.split_perc)
 			#save dev file
 			dev_file = args.out + "NLSE_" + os.path.splitext(os.path.split(train_file)[1])[0] + "_dev.pkl"
-			with open(dev_file,"wb") as fod: cPickle.dump([wrd2idx, X_dev, Y_dev],fod,-1)
+			with open(dev_file,"wb") as fod: cPickle.dump([X_dev, Y_dev],fod,-1)
 			print "\t> Extracted %s -> %s" % (train_file, dev_file)
 		else:			
 			X_train, Y_train = features(train_msgs, train_lbls, wrd2idx, lbl2idx, max_inst=args.max_inst)
