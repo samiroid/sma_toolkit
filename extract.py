@@ -19,7 +19,22 @@ def get_parser():
     parser.add_argument('-nlse', type=str, help='path the embeddings (extract NLSE features)')    
     return parser
 
-def features(msgs, labels, wrd2idx, lbl2idx, max_inst=None, split_perc=None):
+def basic_extract(msgs, labels, wrd2idx=None, lbl2idx=None):
+	"""
+		Extract bag-of-word features
+	"""
+	if wrd2idx is None:
+		wrd2idx = word_2_idx(msgs)
+	if lbl2idx is None:
+		lbl2idx = word_2_idx(labels)
+
+	X = [ np.array([wrd2idx[w] for w in m.split() if w in wrd2idx]) for m in msgs ]	
+	Y = [lbl2idx[l] for l in labels]
+
+	return X, Y, wrd2idx, lbl2idx
+
+
+def extract(msgs, labels, wrd2idx, lbl2idx, max_inst=None, split_perc=None):
 	"""
 		Compute word features
 		msgs: messages
@@ -29,8 +44,7 @@ def features(msgs, labels, wrd2idx, lbl2idx, max_inst=None, split_perc=None):
 		max_inst: If set, specifies a maximum number of (stratified) samples
 		split_perc: If set, specifies splits the data
 	"""
-	X = [ np.array([wrd2idx[w] for w in m.split() if w in wrd2idx]) for m in msgs ]	
-	Y = np.array([lbl2idx[l] for l in labels])	
+	X, Y, _, _ = basic_extract(msgs, labels, wrd2idx, lbl2idx)	
 	#Keep only max instances
 	if max_inst is not None:
 		print "[max instances: %d]" % max_inst				
@@ -67,7 +81,7 @@ if __name__=="__main__":
 	# convert to numeric labels
 	lbl2idx = word_2_idx(train_lbls)		
 	#shuffle the training data
-	rng   = np.random.RandomState(args.rand_seed)
+	rng   = np.random.RandomState(args.rand_seed) 
 	shuff = rng.randint(0,len(train_msgs),len(train_msgs)) 
 	train_lbls = np.array(train_lbls)[shuff]
 	train_msgs = np.array(train_msgs)[shuff]
@@ -93,25 +107,25 @@ if __name__=="__main__":
 		print "[saving BOW features]"
 		#train data				
 		if args.split_perc is not None:			
-			X_train, Y_train, X_dev, Y_dev = features(train_msgs, train_lbls, 
+			X_train, Y_train, X_dev, Y_dev = extract(train_msgs, train_lbls, 
 													  wrd2idx, lbl2idx, 
 													  max_inst=args.max_inst, 
 													  split_perc=args.split_perc)
 			#save dev file
-			dev_file = args.out + "BOW_" + os.path.splitext(os.path.split(train_file)[1])[0] + "_dev.pkl"
+			dev_file = args.out + os.path.splitext(os.path.split(train_file)[1])[0] + "_dev.pkl"
 			with open(dev_file,"wb") as fod: cPickle.dump([wrd2idx, X_dev, Y_dev],fod,-1)
 			print "\t> Extracted %s -> %s" % (train_file, dev_file)
 		else:			
-			X_train, Y_train = features(train_msgs, train_lbls, wrd2idx, lbl2idx, max_inst=args.max_inst)
+			X_train, Y_train = extract(train_msgs, train_lbls, wrd2idx, lbl2idx, max_inst=args.max_inst)
 		#save
-		out_file = args.out + "BOW_" + os.path.splitext(os.path.split(train_file)[1])[0] + ".pkl"
+		out_file = args.out + os.path.splitext(os.path.split(train_file)[1])[0] + ".pkl"
 		with open(out_file,"wb") as fod: cPickle.dump([wrd2idx, X_train, Y_train],fod,-1)		
 		print "\t> Extracted %s -> %s" % (train_file, out_file)		
 		#test data
 		for test_file, test_msgs, test_lbls in test_sets:									
-			X_test, Y_test = features(test_msgs, test_lbls, wrd2idx, lbl2idx)
+			X_test, Y_test = extract(test_msgs, test_lbls, wrd2idx, lbl2idx)
 			#save
-			out_file = args.out + "BOW_" + os.path.splitext(os.path.split(test_file)[1])[0] + ".pkl"
+			out_file = args.out + os.path.splitext(os.path.split(test_file)[1])[0] + ".pkl"
 			with open(out_file,"wb") as fod: cPickle.dump([wrd2idx, X_test, Y_test],fod,-1)		
 			print "\t> Extracted %s -> %s" % (test_file, out_file)
 	if args.boe is not None:
@@ -122,25 +136,25 @@ if __name__=="__main__":
 		print "[saving BOE features]"				
 		wrd2idx = word_2_idx(np.concatenate((train_msgs,test_msgs)))		
 		if args.split_perc is not None:			
-			X_train, Y_train, X_dev, Y_dev = features(train_msgs, train_lbls, 
+			X_train, Y_train, X_dev, Y_dev = extract(train_msgs, train_lbls, 
 													  wrd2idx, lbl2idx, 
 													  max_inst=args.max_inst, 
 													  split_perc=args.split_perc)
 			#save dev file
-			dev_file = args.out + "BOE_" + os.path.splitext(os.path.split(train_file)[1])[0] + "_dev.pkl"
+			dev_file = args.out + os.path.splitext(os.path.split(train_file)[1])[0] + "_dev.pkl"
 			with open(dev_file,"wb") as fod: cPickle.dump([wrd2idx, X_dev, Y_dev],fod,-1)
 			print "\t> Extracted %s -> %s" % (train_file, dev_file)
 		else:			
-			X_train, Y_train = features(train_msgs, train_lbls, wrd2idx, lbl2idx, max_inst=args.max_inst)
+			X_train, Y_train = extract(train_msgs, train_lbls, wrd2idx, lbl2idx, max_inst=args.max_inst)
 		#save
-		out_file = args.out + "BOE_" + os.path.splitext(os.path.split(train_file)[1])[0] + ".pkl"
+		out_file = args.out + os.path.splitext(os.path.split(train_file)[1])[0] + ".pkl"
 		with open(out_file,"wb") as fod: cPickle.dump([wrd2idx, X_train, Y_train],fod,-1)		
 		print "\t> Extracted %s -> %s" % (train_file, out_file)		
 		#test data
 		for test_file, test_msgs, test_lbls in test_sets:									
-			X_test, Y_test = features(test_msgs, test_lbls, wrd2idx, lbl2idx)
+			X_test, Y_test = extract(test_msgs, test_lbls, wrd2idx, lbl2idx)
 			#save
-			out_file = args.out + "BOE_" + os.path.splitext(os.path.split(test_file)[1])[0] + ".pkl"
+			out_file = args.out + os.path.splitext(os.path.split(test_file)[1])[0] + ".pkl"
 			with open(out_file,"wb") as fod: cPickle.dump([wrd2idx, X_test, Y_test],fod,-1)		
 			print "\t> Extracted %s -> %s" % (test_file, out_file)		
 		print "[loading word embeddings: %s]" % args.boe
@@ -158,16 +172,16 @@ if __name__=="__main__":
 		print "[saving NLSE features]"
 		#train data
 		if args.split_perc is not None:			
-			X_train, Y_train, X_dev, Y_dev = features(train_msgs, train_lbls, 
+			X_train, Y_train, X_dev, Y_dev = extract(train_msgs, train_lbls, 
 													  wrd2idx, lbl2idx, 
 													  max_inst=args.max_inst, 
 													  split_perc=args.split_perc)
 			#save dev file
-			dev_file = args.out + "NLSE_" + os.path.splitext(os.path.split(train_file)[1])[0] + "_dev.pkl"
+			dev_file = args.out + os.path.splitext(os.path.split(train_file)[1])[0] + "_dev.pkl"
 			with open(dev_file,"wb") as fod: cPickle.dump([X_dev, Y_dev],fod,-1)
 			print "\t> Extracted %s -> %s" % (train_file, dev_file)
 		else:			
-			X_train, Y_train = features(train_msgs, train_lbls, wrd2idx, lbl2idx, max_inst=args.max_inst)
+			X_train, Y_train = extract(train_msgs, train_lbls, wrd2idx, lbl2idx, max_inst=args.max_inst)
 		# Concatenate train data into a single numpy array, keep start and end
 		# indices
 		lens = np.array([len(tr) for tr in X_train]).astype(int)
@@ -178,17 +192,19 @@ if __name__=="__main__":
 		X_train = x     
 		Y_train = np.array(Y_train)[:, None] # Otherwise slices are scalars not Tensors
 		# save
-		out_file = args.out + "NLSE_" + os.path.splitext(os.path.split(train_file)[1])[0] + ".pkl"
+		out_file = args.out + os.path.splitext(os.path.split(train_file)[1])[0] + ".pkl"
 		with open(out_file,"w") as fod: cPickle.dump([X_train, Y_train, st, ed], fod, cPickle.HIGHEST_PROTOCOL)		
 		print "\t> Extracted %s -> %s" % (train_file, out_file)
 			#test data
 		for test_file, test_msgs, test_lbls in test_sets:
-			X_test, Y_test = features(test_msgs, test_lbls, wrd2idx, lbl2idx)
-			out_file = args.out + "NLSE_" + os.path.splitext(os.path.split(test_file)[1])[0] + ".pkl"
+			X_test, Y_test = extract(test_msgs, test_lbls, wrd2idx, lbl2idx)
+			out_file = args.out + os.path.splitext(os.path.split(test_file)[1])[0] + ".pkl"
 			with open(out_file,"w") as fod: cPickle.dump([X_test, Y_test], fod, -1)		
 			print "\t> Extracted %s -> %s" % (test_file, out_file)
-		print "[loading word embeddings: %s]" % args.nlse
-		E = emb_utils.get_embeddings(args.nlse, wrd2idx)			
-		out_file = args.out+"/E_"+ os.path.splitext(os.path.split(train_file)[1])[0] +".pkl"
-		#save embedding matrix
-		with open(out_file,"w") as fod: cPickle.dump(E, fod, -1)	
+		#if BOE features were also extracted, then we should already have the embedding matrix
+		if args.boe is not None:
+			print "[loading word embeddings: %s]" % args.nlse
+			E = emb_utils.get_embeddings(args.nlse, wrd2idx)			
+			out_file = args.out+"/E_"+ os.path.splitext(os.path.split(train_file)[1])[0] +".pkl"
+			#save embedding matrix
+			with open(out_file,"w") as fod: cPickle.dump(E, fod, -1)	

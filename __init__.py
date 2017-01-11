@@ -26,11 +26,13 @@ def word_2_idx(msgs, zero_for_padd=False, max_words=None):
     """ 
     words = [w for m in msgs for w in m.split()]
     if max_words is not None:                
-        top_words = sorted(Counter(words).items(), key=lambda x:x[1],reverse=True)[:max_words]                    
+        top_words = sorted(Counter(words).items(), key=lambda x:x[1],reverse=True)[:max_words]
         words = [w[0] for w in top_words]
+    #keep only the types
+    words = list(set(words))
     #prepend the padding token
-    if zero_for_padd: words = ['_pad_'] + list(words)    
-    return {w:i for i,w in enumerate(set(words))}
+    if zero_for_padd: words = ['_PAD_'] + words
+    return {w:i for i,w in enumerate(words)}
 
 def kfolds(n_folds,n_elements,val_set=False,shuffle=False,random_seed=1234):        
     if val_set:

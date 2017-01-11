@@ -1,11 +1,13 @@
 import argparse
+import cPickle
 from collections import Counter
 from gensim.models.word2vec import Word2Vec
 from gensim.models.ldamulticore import LdaMulticore
 from gensim.models.doc2vec import LabeledSentence
 from gensim.models import Doc2Vec
 from ipdb import set_trace
-import pprint 
+import numpy as np
+import os
 from __init__ import word_2_idx
 
 class Word2VecReader(object):
@@ -34,14 +36,43 @@ class Doc2VecReader(object):
 		self.max_sent = max_sent if max_sent else float('inf')
 		if self.max_sent < float('inf'):
 			print "[max_sentences: %d]" % self.max_sent
+		self.doc2idx = {}
+
+	def load_model(self, model_path, doc2idx_path):
+		self.d2v = Doc2Vec.load(model_path)
+		with open(doc2idx_path) as fid:
+			self.doc2idx = cPickle.load(fid)
+
+	def save_idx(self, path):
+		with open(path,"w") as fod:
+			cPickle.dump(self.doc2idx, fod, -1)
+
+	def vector(self, doc_id):
+		assert self.d2v is not None, "Did your forget to load_model() ?"		
+		idx = self.doc2idx[doc_id]
+		return self.d2v.docvecs[idx]
+
+	def infer_vector(self, doc):
+		assert self.d2v is not None, "Did your forget to load_model() ?"
+		return self.d2v.infer_vector(doc)
+
 	def __iter__(self):		
 		for dataset in self.datasets:
 			print dataset			
 			with open(dataset) as fid:				
 				for i, l in enumerate(fid):						
-					if i>self.max_sent: break	
-					txt = l.decode("utf-8").split()
-					yield LabeledSentence(words=txt,tags=[i])
+					if i>self.max_sent: break					
+					splt = l.decode("utf-8").split()
+					if len(splt)<2: continue
+					doc_id = splt[0]
+					try:
+						idx = self.doc2idx[doc_id]
+					except KeyError:
+						idx=len(self.doc2idx)
+						self.doc2idx[doc_id]=idx
+					txt = splt[1:]
+					yield LabeledSentence(words=txt,tags=[idx])
+
 
 class LDAReader(object):
 	def __init__(self, datasets, max_sent=None):
@@ -53,9 +84,35 @@ class LDAReader(object):
 		self.max_sent = max_sent if max_sent else float('inf') 
 		if self.max_sent < float('inf'):
 			print "[max_sentences: %d]" % self.max_sent
-		self._compute_vocabulary()
+		self.wrd2idx = None
+		self.idx2wrd = None		
+		self.model   = None
 
-	def _compute_vocabulary(self):
+	def load_vocabulary(self, wrd2idx):
+		self.wrd2idx = wrd2idx
+		self.idx2wrd = {i:w for w,i in self.wrd2idx.items()}
+		
+
+	def save_vocabulary(self, path):
+		with open(path,"w") as fod:
+			cPickle.dump(self.wrd2idx, fod) 
+			print "[wrd2idx saved @ %s]" % path
+
+	def load_model(self, model_path, wrd2idx_path):
+		self.model = LdaMulticore.load(model_path)
+		with open(wrd2idx_path) as fid:
+			wrd2idx = cPickle.load(fid)		
+		self.load_vocabulary(wrd2idx)
+
+	def get_topics(self, doc):
+		assert self.model is not None, "Model not found! Please did you forget to load_model() ?"
+		feats = np.zeros(self.model.num_topics)
+		topics = self.model.get_document_topics(self.features(doc))
+		for t in topics:
+			feats[t[0]] = t[1]
+		return feats
+
+	def compute_vocabulary(self):
 		ct = Counter()
 		for dataset in self.datasets:
 			print dataset
@@ -67,24 +124,29 @@ class LDAReader(object):
 		self.idx2wrd = {i:w for w,i in self.wrd2idx.items()}
 	
 	def features(self, doc):
-		ct = Counter(doc.decode("utf-8").split())
+		ct = Counter(doc.split())
 		return [(self.wrd2idx[w],c) for w,c in ct.items() if w in self.wrd2idx]
 
 	def __iter__(self):		
+		assert self.wrd2idx is not None and self.idx2wrd is not None, "Vocabulary not found! Did you forget to call compute_vocabulary() ?"
 		for dataset in self.datasets:
 			print dataset			
 			with open(dataset) as fid:
 				for i,l in enumerate(fid):					
 					if i>self.max_sent: break
-					yield self.features(l)
+					yield self.features(l.decode("utf-8"))
 
 def train_lda(args):
 	print "[LDA > n_topics: %d ]" % args.dim	
 	lda_reader = LDAReader(args.ds, max_sent=args.max_sent)		
-	ldazito = LdaMulticore(lda_reader, id2word=lda_reader.idx2wrd,
+	lda_reader.compute_vocabulary()	
+	lda_model = LdaMulticore(lda_reader, id2word=lda_reader.idx2wrd,
 									   num_topics=args.dim, 
 									   workers=args.workers)
-	ldazito.save(args.out)	
+	lda_model.save(args.out)	
+	idx_path =  os.path.splitext(args.out)[0]+"_idx.pkl"
+	lda_reader.save_vocabulary(idx_path)
+	
 
 def train_skipgram(args):
 	if args.negative_samples > 0:		
@@ -117,6 +179,8 @@ def train_doc2vec(args):
 	d2v_reader = Doc2VecReader(args.ds,args.max_sent)
 	d2v.train(d2v_reader)		
 	d2v.save(args.out)	
+	idx_path =  os.path.splitext(args.out)[0]+"_idx.pkl"
+	d2v_reader.save_idx(idx_path)
 	print "Done"	
 
 def get_parser():
