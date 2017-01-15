@@ -1,6 +1,6 @@
 from collections import Counter, defaultdict
 import csv
-from ipdb import set_trace
+from pdb import set_trace
 import numpy as np
 import os
   
@@ -33,6 +33,9 @@ def word_2_idx(msgs, zero_for_padd=False, max_words=None):
     #prepend the padding token
     if zero_for_padd: words = ['_PAD_'] + words
     return {w:i for i,w in enumerate(words)}
+
+def idx_2_wrd(wrd2idx):
+    return {i:w for w,i in wrd2idx.items()}
 
 def kfolds(n_folds,n_elements,val_set=False,shuffle=False,random_seed=1234):        
     if val_set:

@@ -5,7 +5,6 @@ from gensim.models.word2vec import Word2Vec
 from gensim.models.ldamulticore import LdaMulticore
 from gensim.models.doc2vec import LabeledSentence
 from gensim.models import Doc2Vec
-from ipdb import set_trace
 import numpy as np
 import os
 from __init__ import word_2_idx
@@ -104,12 +103,12 @@ class LDAReader(object):
 			wrd2idx = cPickle.load(fid)		
 		self.load_vocabulary(wrd2idx)
 
-	def get_topics(self, doc):
+	def get_topics(self, doc, binary=False):
 		assert self.model is not None, "Model not found! Please did you forget to load_model() ?"
 		feats = np.zeros(self.model.num_topics)
 		topics = self.model.get_document_topics(self.features(doc))
 		for t in topics:
-			feats[t[0]] = t[1]
+			feats[t[0]] = t[1] if binary else 0
 		return feats
 
 	def compute_vocabulary(self):

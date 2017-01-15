@@ -1,6 +1,6 @@
 import argparse
 import cPickle
-from ipdb import set_trace
+from pdb import set_trace
 from __init__ import word_2_idx, stratified_sampling, shuffle_split
 import numpy as np
 import os
@@ -23,11 +23,8 @@ def basic_extract(msgs, labels, wrd2idx=None, lbl2idx=None):
 	"""
 		Extract bag-of-word features
 	"""
-	if wrd2idx is None:
-		wrd2idx = word_2_idx(msgs)
-	if lbl2idx is None:
-		lbl2idx = word_2_idx(labels)
-
+	if wrd2idx is None: wrd2idx = word_2_idx(msgs)
+	if lbl2idx is None: lbl2idx = word_2_idx(labels)
 	X = [ np.array([wrd2idx[w] for w in m.split() if w in wrd2idx]) for m in msgs ]	
 	Y = [lbl2idx[l] for l in labels]
 
@@ -98,7 +95,10 @@ if __name__=="__main__":
 				msgs.append(splt[1])	
 				test_msgs.append(splt[1])
 		test_sets.append([test_file,msgs,lbls])			
-	#output folder
+	#output folder	
+	if not args.out.endswith("/"):
+		args.out+="/"
+
 	if not os.path.isdir(os.path.dirname(args.out)): os.makedirs(os.path.dirname(args.out))	
 	#feature extraction
 	if args.bow:	
@@ -119,16 +119,16 @@ if __name__=="__main__":
 			X_train, Y_train = extract(train_msgs, train_lbls, wrd2idx, lbl2idx, max_inst=args.max_inst)
 		#save
 		out_file = args.out + os.path.splitext(os.path.split(train_file)[1])[0] + ".pkl"
-		with open(out_file,"wb") as fod: cPickle.dump([wrd2idx, X_train, Y_train],fod,-1)		
+		with open(out_file,"wb") as fod: cPickle.dump([wrd2idx, lbl2idx, X_train, Y_train],fod,-1)		
 		print "\t> Extracted %s -> %s" % (train_file, out_file)		
 		#test data
 		for test_file, test_msgs, test_lbls in test_sets:									
 			X_test, Y_test = extract(test_msgs, test_lbls, wrd2idx, lbl2idx)
 			#save
 			out_file = args.out + os.path.splitext(os.path.split(test_file)[1])[0] + ".pkl"
-			with open(out_file,"wb") as fod: cPickle.dump([wrd2idx, X_test, Y_test],fod,-1)		
+			with open(out_file,"wb") as fod: cPickle.dump([wrd2idx, lbl2idx, X_test, Y_test],fod,-1)		
 			print "\t> Extracted %s -> %s" % (test_file, out_file)
-	if args.boe is not None:
+	elif args.boe is not None:
 		###### BOE feature extraction				
 		# when using embeddings it is ok to include words from the test data in the vocabulary 
 		# (all the embeddings are available at inference time)
@@ -142,27 +142,28 @@ if __name__=="__main__":
 													  split_perc=args.split_perc)
 			#save dev file
 			dev_file = args.out + os.path.splitext(os.path.split(train_file)[1])[0] + "_dev.pkl"
-			with open(dev_file,"wb") as fod: cPickle.dump([wrd2idx, X_dev, Y_dev],fod,-1)
+			with open(dev_file,"wb") as fod: cPickle.dump([wrd2idx, lbl2idx, X_dev, Y_dev],fod,-1)
 			print "\t> Extracted %s -> %s" % (train_file, dev_file)
 		else:			
 			X_train, Y_train = extract(train_msgs, train_lbls, wrd2idx, lbl2idx, max_inst=args.max_inst)
 		#save
 		out_file = args.out + os.path.splitext(os.path.split(train_file)[1])[0] + ".pkl"
-		with open(out_file,"wb") as fod: cPickle.dump([wrd2idx, X_train, Y_train],fod,-1)		
+		with open(out_file,"wb") as fod: cPickle.dump([wrd2idx, lbl2idx, X_train, Y_train],fod,-1)		
 		print "\t> Extracted %s -> %s" % (train_file, out_file)		
 		#test data
 		for test_file, test_msgs, test_lbls in test_sets:									
 			X_test, Y_test = extract(test_msgs, test_lbls, wrd2idx, lbl2idx)
 			#save
 			out_file = args.out + os.path.splitext(os.path.split(test_file)[1])[0] + ".pkl"
-			with open(out_file,"wb") as fod: cPickle.dump([wrd2idx, X_test, Y_test],fod,-1)		
+			with open(out_file,"wb") as fod: cPickle.dump([wrd2idx, lbl2idx, X_test, Y_test],fod,-1)		
 			print "\t> Extracted %s -> %s" % (test_file, out_file)		
 		print "[loading word embeddings: %s]" % args.boe
 		E = emb_utils.get_embeddings(args.boe, wrd2idx)			
-		out_file = args.out+"/E_"+ os.path.splitext(os.path.split(train_file)[1])[0] +".pkl"
+		out_file = args.out+"E_"+ os.path.splitext(os.path.split(train_file)[1])[0] +".pkl"
 		#save embedding matrix
 		with open(out_file,"w") as fod: cPickle.dump(E, fod, -1)	
-	if args.nlse is not None:
+		print "[embeddings saved @ %s]" % out_file
+	elif args.nlse is not None:
 		###### NLSE feature extraction		
 		# when using embeddings it is ok to include words from the test data in the vocabulary 
 		# (all the embeddings are available at inference time)
@@ -201,10 +202,12 @@ if __name__=="__main__":
 			out_file = args.out + os.path.splitext(os.path.split(test_file)[1])[0] + ".pkl"
 			with open(out_file,"w") as fod: cPickle.dump([X_test, Y_test], fod, -1)		
 			print "\t> Extracted %s -> %s" % (test_file, out_file)
-		#if BOE features were also extracted, then we should already have the embedding matrix
-		if args.boe is not None:
-			print "[loading word embeddings: %s]" % args.nlse
-			E = emb_utils.get_embeddings(args.nlse, wrd2idx)			
-			out_file = args.out+"/E_"+ os.path.splitext(os.path.split(train_file)[1])[0] +".pkl"
-			#save embedding matrix
-			with open(out_file,"w") as fod: cPickle.dump(E, fod, -1)	
+		print "[loading word embeddings: %s]" % args.nlse
+		E = emb_utils.get_embeddings(args.nlse, wrd2idx)			
+		out_file = args.out+"E_"+ os.path.splitext(os.path.split(train_file)[1])[0] +".pkl"
+		#save embedding matrix
+		with open(out_file,"w") as fod: cPickle.dump(E, fod, -1)	
+		print "[embeddings saved @ %s]" % out_file
+	else:
+		raise NotImplementedError
+	print ""	
