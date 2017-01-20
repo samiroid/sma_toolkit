@@ -1,6 +1,8 @@
+import codecs
+import cPickle 
+from __init__ import idx_2_wrd
 import numpy as np
 import theano 
-import cPickle 
 import theano.tensor as T
 
 class Emb_Mapper():
@@ -53,7 +55,7 @@ def get_embeddings(path, wrd2idx):
         Recover an embedding matrix consisting of the relevant
         vectors for the given set of words
     """
-    with open(path) as fid:
+    with codecs.open(path,"r","utf-8") as fid:
         voc_size = len(wrd2idx)        
         _, emb_size = fid.readline().split()        
         E = np.zeros((int(emb_size), voc_size))
@@ -67,7 +69,12 @@ def get_embeddings(path, wrd2idx):
     perc = n_OOEV*100./len(wrd2idx)
     print ("%d/%d (%2.2f %%) words in vocabulary found no embedding" 
            % (n_OOEV, len(wrd2idx), perc)) 
-    return E
+
+    ooev_idx = np.where(~E.any(axis=0))[0]
+    idx2wrd = idx_2_wrd(wrd2idx)
+    ooevs = [idx2wrd[idx] for idx in ooev_idx]
+
+    return E, ooevs
 
 def save_embeddings_txt(path_in, path_out, wrd2idx, init_ooe=False):
 
@@ -81,8 +88,8 @@ def save_embeddings_txt(path_in, path_out, wrd2idx, init_ooe=False):
     """
     emb_values = []
     all_words = wrd2idx.copy()
-    with open(path_out,"w") as fod:
-        with open(path_in,"r") as fid:
+    with codecs.open(path_out,"w","utf-8") as fod:
+        with codecs.open(path_in,"r","utf-8") as fid:
             voc_size = len(wrd2idx)
             _, emb_size = fid.readline().split()        
             # emb_values = np.zeros(int(emb_size))
@@ -99,23 +106,23 @@ def save_embeddings_txt(path_in, path_out, wrd2idx, init_ooe=False):
         print ("%d/%d (%2.2f %%) words in vocabulary found no embedding" 
            % (len(all_words), len(wrd2idx), perc)) 
 
-        if init_ooe:
-            print "Initialize OOE words randomly"
-            all_embs_vals = np.matrix(emb_values)  
-            mu  = np.mean(all_embs_vals,axis=0)
-            mu  = np.squeeze(np.asarray(mu))
-            cov = np.cov(all_embs_vals,rowvar=0)
-            sampled_embs = np.random.multivariate_normal(mu, cov,size=len(all_words))
+        # if init_ooe:
+        #     print "Initialize OOE words randomly"
+        #     all_embs_vals = np.matrix(emb_values)  
+        #     mu  = np.mean(all_embs_vals,axis=0)
+        #     mu  = np.squeeze(np.asarray(mu))
+        #     cov = np.cov(all_embs_vals,rowvar=0)
+        #     sampled_embs = np.random.multivariate_normal(mu, cov,size=len(all_words))
             
-            for i, wrd in enumerate(all_words):
-                emb = sampled_embs[i,:]
-                try:
-                    fod.write("%s %s\n" % ( wrd.encode("utf-8"), " ".join(map(str, emb))) )   
-                except UnicodeDecodeError:                   
-                    try:
-                        fod.write("%s %s\n" % ( wrd.decode("utf-8").encode("utf-8"), " ".join(map(str, emb))) ) 
-                    except UnicodeDecodeError:                    
-                        print "ERROR: ",  wrd
+        #     for i, wrd in enumerate(all_words):
+        #         emb = sampled_embs[i,:]
+        #         try:
+        #             fod.write("%s %s\n" % ( wrd.encode("utf-8"), " ".join(map(str, emb))) )   
+        #         except UnicodeDecodeError:                   
+        #             try:
+        #                 fod.write("%s %s\n" % ( wrd.decode("utf-8").encode("utf-8"), " ".join(map(str, emb))) ) 
+        #             except UnicodeDecodeError:                    
+        #                 print "ERROR: ",  wrd
 
             
 def embeddings_to_dict(path):
@@ -123,7 +130,7 @@ def embeddings_to_dict(path):
         Read word embeddings into a dictionary
     """
     w2v = {}
-    with open(path,"r") as fid:
+    with codecs.open(path,"r","utf-8") as fid:
         fid.readline()        
         for line in fid:
             entry = line.split()

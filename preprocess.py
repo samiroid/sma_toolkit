@@ -85,6 +85,8 @@ def emoticon_polarity(emoticon):
     return polarity
 
 def preprocess(m, sep_emoji=False):
+    assert type(m) == unicode
+    
     m = m.lower()    
     m = max_reps(m)
     #replace user mentions with token '@user'
