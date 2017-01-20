@@ -202,6 +202,12 @@ if __name__ == "__main__":
 	print "** Induce Text Representations with Gensim **"
 	print "[input > %s | max_sent: %s | workers: %d | output@%s]\n" % (repr(args.ds), repr(args.max_sent), args.workers,  args.out)	
 
+	#create output folder if it does not exist
+	out_folder = os.path.dirname(args.out)
+	if not os.path.exists(out_folder):		
+		os.makedirs(out_folder)
+		print "[created output folder: %s]" % out_folder		
+
 	if args.model =="lda":
 		train_lda(args)
 	elif args.model == "doc2vec":
