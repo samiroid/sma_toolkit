@@ -105,25 +105,6 @@ def save_embeddings_txt(path_in, path_out, wrd2idx, init_ooe=False):
         perc = len(all_words)*100./len(wrd2idx)
         print ("%d/%d (%2.2f %%) words in vocabulary found no embedding" 
            % (len(all_words), len(wrd2idx), perc)) 
-
-        # if init_ooe:
-        #     print "Initialize OOE words randomly"
-        #     all_embs_vals = np.matrix(emb_values)  
-        #     mu  = np.mean(all_embs_vals,axis=0)
-        #     mu  = np.squeeze(np.asarray(mu))
-        #     cov = np.cov(all_embs_vals,rowvar=0)
-        #     sampled_embs = np.random.multivariate_normal(mu, cov,size=len(all_words))
-            
-        #     for i, wrd in enumerate(all_words):
-        #         emb = sampled_embs[i,:]
-        #         try:
-        #             fod.write("%s %s\n" % ( wrd.encode("utf-8"), " ".join(map(str, emb))) )   
-        #         except UnicodeDecodeError:                   
-        #             try:
-        #                 fod.write("%s %s\n" % ( wrd.decode("utf-8").encode("utf-8"), " ".join(map(str, emb))) ) 
-        #             except UnicodeDecodeError:                    
-        #                 print "ERROR: ",  wrd
-
             
 def embeddings_to_dict(path):
     """
@@ -134,5 +115,6 @@ def embeddings_to_dict(path):
         fid.readline()        
         for line in fid:
             entry = line.split()
-            w2v[entry[0]] = np.array(entry[1:]).astype('float32')
+            if len(entry) > 2:
+                w2v[entry[0]] = np.array(entry[1:]).astype('float32')
     return w2v   
