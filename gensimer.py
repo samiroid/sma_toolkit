@@ -7,6 +7,7 @@ from gensim.models.doc2vec import LabeledSentence
 from gensim.models import Doc2Vec
 import numpy as np
 import os
+import time
 from __init__ import word_2_idx
 
 class Word2VecReader(object):
@@ -17,7 +18,6 @@ class Word2VecReader(object):
 			print "[max_sentences: %d]" % self.max_sent
 	def __iter__(self):		
 		for dataset in self.datasets:
-			print dataset
 			lines=0	
 			with open(dataset) as fid:
 				for l in fid:		
@@ -148,6 +148,7 @@ def train_lda(args):
 	
 
 def train_skipgram(args):
+	t0 = time.time()
 	if args.negative_samples > 0:		
 		print "[SKip-Gram > negative_samples: %d | min_count: %d | dim: %d | epochs: %d]" % (args.negative_samples, args.min_count, args.dim, args.epochs)
 		w2v = Word2Vec(sentences=Word2VecReader(args.ds,args.max_sent), size=args.dim, 
@@ -156,11 +157,16 @@ def train_skipgram(args):
 	else:		
 		print "[SKip-Gram (Hierachical Softmax) > min_count: %d | dim: %d | epochs: %d]" % (args.min_count, args.dim, args.epochs)
 		w2v = Word2Vec(sentences=Word2VecReader(args.ds,args.max_sent), size=args.dim, 
-			           workers=args.workers, min_count=args.min_count, sg=1, 
+			           workers=args.workers, min_count=args.min_count, sg=0, 
 			           hs=1,iter=args.epochs)		
 	w2v.train(Word2VecReader(args.ds,args.max_sent))
-	w2v.save(args.out)
-	w2v.save_word2vec_format(args.out+".txt")
+	path_out = os.path.splitext(args.out)[0]
+	w2v.save(path_out+".pkl")
+	w2v.save_word2vec_format(path_out+".txt")
+	tend = time.time() - t0
+	mins = np.floor(tend*1./60)
+	secs = tend - mins*60
+	print "[runtime: %d.%d mins]" % (mins,secs)
 	print "Done"	
 
 def train_doc2vec(args):
