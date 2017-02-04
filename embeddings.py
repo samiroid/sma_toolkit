@@ -76,7 +76,7 @@ def get_embeddings(path, wrd2idx):
 
     return E, ooevs
 
-def save_embeddings_txt(path_in, path_out, wrd2idx, init_ooe=False):
+def save_embeddings_txt(path_in, path_out, wrd2idx):
 
     """
         Filter embeddings file to contain only the relevant set
@@ -87,7 +87,7 @@ def save_embeddings_txt(path_in, path_out, wrd2idx, init_ooe=False):
         estimated from the embeddings that were found
     """
     emb_values = []
-    all_words = wrd2idx.copy()
+    ooevs = wrd2idx.copy()
     with codecs.open(path_out,"w","utf-8") as fod:
         with codecs.open(path_in,"r","utf-8") as fid:
             voc_size = len(wrd2idx)
@@ -98,13 +98,14 @@ def save_embeddings_txt(path_in, path_out, wrd2idx, init_ooe=False):
                 items = line.split()
                 wrd   = items[0]
                 if wrd in wrd2idx:
-                    del all_words[wrd]
+                    del ooevs[wrd]
                     emb_values.append(np.array(items[1:]).astype(float))
                     fod.write(line)
-        
-        perc = len(all_words)*100./len(wrd2idx)
+        perc = len(ooevs)*100./len(wrd2idx)
         print ("%d/%d (%2.2f %%) words in vocabulary found no embedding" 
-           % (len(all_words), len(wrd2idx), perc)) 
+           % (len(ooevs), len(wrd2idx), perc)) 
+        #ooev words
+        return ooevs
             
 def embeddings_to_dict(path):
     """
