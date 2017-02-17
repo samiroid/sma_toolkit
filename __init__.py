@@ -98,9 +98,9 @@ def shuffle_split(data, split_perc = 0.8, random_seed=1234):
 
         returns: balanced training and test sets
     """
-    rng=np.random.RandomState(random_seed)          
-    z = defaultdict(list)
+
     #shuffle data
+    rng=np.random.RandomState(random_seed)                  
     rng.shuffle(data)
     #group examples by class label    
     z = defaultdict(list)
@@ -114,6 +114,36 @@ def shuffle_split(data, split_perc = 0.8, random_seed=1234):
                     [label] * int(len(x_label)*split_perc))         
         test  += zip(x_label[ int(len(x_label)*split_perc):],
                     [label] * int(len(x_label)*(1-split_perc)))
+    #reshuffle
+    rng.shuffle(train)
+    rng.shuffle(test)    
+
+    return train, test
+
+def shuffle_split_idx(Y, split_perc = 0.8, random_seed=1234):
+    """
+        Split the data into train and test, keeping the class proportions
+
+        data: list of labels
+        split_perc: percentage of training examples in train/test split
+        random_seed: ensure repeatable shuffles
+
+        returns: indices for balanced training and test sets 
+    """
+    #shuffle data
+    rng=np.random.RandomState(random_seed)          
+    #group examples by class class    
+    z = defaultdict(list)
+    for i,y in enumerate(Y): 
+        z[y].append(i)    
+    train = []    
+    test  = []
+    for cl in z.keys():
+        #indices of the examples of each class 
+        idx_cl = z[cl]  
+        splt   = int(len(idx_cl)*split_perc)
+        train += idx_cl[:splt]         
+        test  += idx_cl[splt:]
     #reshuffle
     rng.shuffle(train)
     rng.shuffle(test)    
@@ -141,14 +171,14 @@ def stratified_sampling(data, n, random_seed=1234):
     class_dist = {}
     for cl, samples in z.items():
         class_dist[cl] = int((len(samples)*1./len(data)) * n)
-    train = []    
+    sample = []    
     
     for label in z.keys():
         #examples of each label 
         x_label  = z[label]            
-        train += zip(x_label[:class_dist[label]],
+        sample += zip(x_label[:class_dist[label]],
                     [label] * class_dist[label])             
     #reshuffle
-    rng.shuffle(train)
-    return train
+    rng.shuffle(sample)
+    return sample
 
