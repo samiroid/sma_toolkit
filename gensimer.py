@@ -1,6 +1,7 @@
 import argparse
 import cPickle
 from collections import Counter
+from ipdb import set_trace
 from gensim.models.word2vec import Word2Vec
 from gensim.models.ldamulticore import LdaMulticore
 from gensim.models.doc2vec import LabeledSentence
@@ -9,6 +10,7 @@ import numpy as np
 import os
 import time
 from __init__ import word_2_idx
+from embeddings import save_embeddings
 
 class Word2VecReader(object):
 	def __init__(self, datasets, max_sent=None):
@@ -56,8 +58,8 @@ class Doc2VecReader(object):
 		return self.d2v.infer_vector(doc)
 
 	def __iter__(self):		
-		for dataset in self.datasets:
-			print dataset			
+		for dataset in self.datasets:					
+			print dataset
 			with open(dataset) as fid:				
 				for i, l in enumerate(fid):						
 					if i>self.max_sent: break					
@@ -169,23 +171,48 @@ def train_skipgram(args):
 	print "[runtime: %d.%d mins]" % (mins,secs)
 	print "Done"	
 
-def train_doc2vec(args):
-	d2v_reader = Doc2VecReader(args.ds,args.max_sent)
+def train_paragraph2vec(args):	
+	#config model	
+	dm=1 #this corresponds to the PV-DM model	
+	dm_concat=0	
+	if args.model == "pv-dbow":
+		dm=0
+	if args.model == "pv-dm-concat":		
+		dm_concat=1			
 	if args.negative_samples > 0:		
-		print "[Doc2Vec > negative_samples: %d | min_count: %d | dim: %d | epochs: %d]" % (args.negative_samples, args.min_count, args.dim, args.epochs)		
-		d2v = Doc2Vec(documents=d2v_reader, size=args.dim, 
-			           workers=args.workers, min_count=args.min_count, hs=0, 
-			           negative=args.negative_samples, iter=args.epochs)		
+		print "[Doc2Vec > model: %s | word_vecs: %s | negative_samples: %d | min_count: %d | dim: %d | epochs: %d]" % (args.model, args.pretrained_vecs, args.negative_samples, args.min_count, args.dim, args.epochs)				
+		hs=0 # no hierarchical softmax		
 	else:		
-		print "[Doc2Vec (Hierachical Softmax) > min_count: %d | dim: %d | epochs: %d]" % (args.min_count, args.dim, args.epochs)
-		d2v = Doc2Vec(documents=d2v_reader, size=args.dim, 
-			           workers=args.workers, min_count=args.min_count, 
-			           hs=1,iter=args.epochs)		
-	d2v_reader = Doc2VecReader(args.ds,args.max_sent)
+		print "[Doc2Vec (Hierachical Softmax) > model: %s | word_vecs: %s | min_count: %d | dim: %d | epochs: %d]" % (args.model, args.pretrained_vecs, args.min_count, args.dim, args.epochs)		
+		hs=1 # hierarchical softmax				
+	d2v = Doc2Vec(size=args.dim, dm=dm, dm_concat=dm_concat,
+				  hs=hs, negative=args.negative_samples, min_count=args.min_count, 
+			      workers=args.workers, iter=args.epochs)
+	#doc reader
+	d2v_reader = Doc2VecReader(args.ds,args.max_sent)	
+	d2v.build_vocab(d2v_reader)			
+	if args.pretrained_vecs:						
+		print "[loading pre-trained vectors]"
+		t0=time.time()
+		d2v.intersect_word2vec_format(args.pretrained_vecs)
+		tend = time.time() - t0
+		mins = np.floor(tend*1./60)
+		secs = tend - mins*60
+		print "\r[loaded word vectors in: %d.%d mins]" % (mins,secs)				
+	else:		
+		#also train word vectors
+		d2v.dbow_words=1	
+	
 	d2v.train(d2v_reader)		
-	d2v.save(args.out)	
-	idx_path =  os.path.splitext(args.out)[0]+"_idx.pkl"
+	d2v.save(args.out)		
+	#build an embedding matrix with the paragraph vectors
+	E = np.zeros((len(d2v.docvecs[0]),len(d2v.docvecs)))
+	for idx, docvec in enumerate(d2v.docvecs):
+		E[:,idx] = docvec
+	save_embeddings(args.out+".txt", E, d2v_reader.doc2idx)
+	idx_path = os.path.splitext(args.out)[0]+"_idx.pkl"
 	d2v_reader.save_idx(idx_path)
+	d2v.delete_temporary_training_data()
 	print "Done"	
 
 def get_parser():
@@ -193,12 +220,13 @@ def get_parser():
 	parser.add_argument('-ds',  type=str, required=True, nargs='+', help='datasets')        
 	parser.add_argument('-out', type=str, required=True, help='path to store the embeddings')
 	parser.add_argument('-dim', type=int, required=True, help='size of embeddings or number of topics')
-	parser.add_argument('-model',    choices=['w2v','doc2vec','lda'], required=True, help='model')
+	parser.add_argument('-model', choices=['skip','pv-dm','pv-dm-concat','pv-dbow','lda'], required=True, help='model')
 	parser.add_argument('-epochs',   type=int, default=5, help='number of epochs')
 	parser.add_argument('-workers',  type=int, default=4, help='number of workers')
 	parser.add_argument('-max_sent', type=int, help='set max number of sentences to be read (per file)')
-	parser.add_argument('-min_count',type=int, default=10, help='words ocurring less than ''min_count'' times are discarded')
+	parser.add_argument('-min_count',type=int, default=10, help='words ocurring less than ''min_count'' times are discarded')	
 	parser.add_argument('-negative_samples', type=int, default=10, help='number of negative samples for Skip-Gram training. If set to 0 then Hierarchical Softmax will be used')
+	parser.add_argument('-pretrained_vecs', type=str, default=None, help='path to pre-trained word vectors to train paragraph vectors')
 	return parser
 
 
@@ -216,9 +244,9 @@ if __name__ == "__main__":
 
 	if args.model =="lda":
 		train_lda(args)
-	elif args.model == "doc2vec":
-		train_doc2vec(args)
-	elif args.model == "w2v":
+	elif args.model in ["pv-dm","pv-dbow","pv-dm-concat"]:
+		train_paragraph2vec(args)
+	elif args.model == "skip":
 		train_skipgram(args)
 	else:		
 		raise NotImplementedError, "unknown model: %s" % args.model

@@ -76,15 +76,11 @@ def get_embeddings(path, wrd2idx):
 
     return E, ooevs
 
-def save_embeddings_txt(path_in, path_out, wrd2idx):
+def filter_embeddings(path_in, path_out, wrd2idx):
 
     """
         Filter embeddings file to contain only the relevant set
         of words (so that it can be loaded faster)
-
-        init_ooe == True, then initialize out-of-embeddings with 
-        samples from a multivariate gaussian with mean and covariance
-        estimated from the embeddings that were found
     """
     emb_values = []
     ooevs = wrd2idx.copy()
@@ -106,7 +102,14 @@ def save_embeddings_txt(path_in, path_out, wrd2idx):
            % (len(ooevs), len(wrd2idx), perc)) 
         #ooev words
         return ooevs
-            
+
+def save_embeddings(path, E, wrd2idx):
+    with open(path,"w") as fod:
+        fod.write("%d %d\n" % (E.shape[1],E.shape[0]))  
+        for word, idx in wrd2idx.items():      
+            emb = E[:,idx]
+            fod.write("%s %s\n" % (word, " ".join(map(str, emb))))
+
 def embeddings_to_dict(path):
     """
         Read word embeddings into a dictionary
