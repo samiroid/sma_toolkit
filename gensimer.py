@@ -139,7 +139,7 @@ class LDAReader(object):
 
 def train_lda(args):
 	print "[LDA > n_topics: %d ]" % args.dim	
-	lda_reader = LDAReader(args.ds, max_sent=args.max_sent)		
+	lda_reader = LDAReader(args.input, max_sent=args.max_sent)		
 	lda_reader.compute_vocabulary()	
 	lda_model = LdaMulticore(lda_reader, id2word=lda_reader.idx2wrd,
 									   num_topics=args.dim, 
@@ -153,15 +153,17 @@ def train_skipgram(args):
 	t0 = time.time()
 	if args.negative_samples > 0:		
 		print "[SKip-Gram > negative_samples: %d | min_count: %d | dim: %d | epochs: %d]" % (args.negative_samples, args.min_count, args.dim, args.epochs)
-		w2v = Word2Vec(sentences=Word2VecReader(args.ds,args.max_sent), size=args.dim, 
+		w2v = Word2Vec(size=args.dim, 
 			           workers=args.workers, min_count=args.min_count, sg=1, hs=0, 
 			           negative=args.negative_samples, iter=args.epochs)		
 	else:		
 		print "[SKip-Gram (Hierachical Softmax) > min_count: %d | dim: %d | epochs: %d]" % (args.min_count, args.dim, args.epochs)
-		w2v = Word2Vec(sentences=Word2VecReader(args.ds,args.max_sent), size=args.dim, 
+		w2v = Word2Vec(size=args.dim, 
 			           workers=args.workers, min_count=args.min_count, sg=0, 
 			           hs=1,iter=args.epochs)		
-	w2v.train(Word2VecReader(args.ds,args.max_sent))
+	w2v_reader = Word2VecReader(args.input,args.max_sent)
+	w2v.build_vocab(w2v_reader)
+	w2v.train(w2v_reader)
 	path_out = os.path.splitext(args.out)[0]
 	w2v.save(path_out+".pkl")
 	w2v.save_word2vec_format(path_out+".txt")
@@ -189,7 +191,7 @@ def train_paragraph2vec(args):
 				  hs=hs, negative=args.negative_samples, min_count=args.min_count, 
 			      workers=args.workers, iter=args.epochs)
 	#doc reader
-	d2v_reader = Doc2VecReader(args.ds,args.max_sent)	
+	d2v_reader = Doc2VecReader(args.input,args.max_sent)	
 	d2v.build_vocab(d2v_reader)			
 	if args.pretrained_vecs:						
 		print "[loading pre-trained vectors]"
@@ -218,7 +220,7 @@ def train_paragraph2vec(args):
 
 def get_parser():
 	parser = argparse.ArgumentParser(description="Induce Text Representations with Gensim")
-	parser.add_argument('-ds',  type=str, required=True, nargs='+', help='datasets')        
+	parser.add_argument('-in',  type=str, required=True, nargs='+', help='datasets')        
 	parser.add_argument('-out', type=str, required=True, help='path to store the embeddings')
 	parser.add_argument('-dim', type=int, required=True, help='size of embeddings or number of topics')
 	parser.add_argument('-model', choices=['skip','pv-dm','pv-dm-concat','pv-dbow','lda'], required=True, help='model')
@@ -235,7 +237,7 @@ if __name__ == "__main__":
 	cmdline_parser = get_parser()
 	args = cmdline_parser.parse_args() 			
 	print "** Induce Text Representations with Gensim **"
-	print "[input > %s | max_sent: %s | workers: %d | output@%s]\n" % (repr(args.ds), repr(args.max_sent), args.workers,  args.out)	
+	print "[input > %s | max_sent: %s | workers: %d | output@%s]\n" % (repr(args.input), repr(args.max_sent), args.workers,  args.out)	
 
 	#create output folder if it does not exist
 	out_folder = os.path.dirname(args.out)
