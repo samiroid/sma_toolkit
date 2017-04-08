@@ -201,19 +201,19 @@ def train_paragraph2vec(args):
 		mins = np.floor(tend*1./60)
 		secs = tend - mins*60
 		print "\r[loaded word vectors in: %d.%d mins]" % (mins,secs)				
-	else:		
+	else:	
+		print "[training word vectors]"	
 		#also train word vectors
-		d2v.dbow_words=1	
+		d2v.dbow_words=1		
 	
-	d2v.train(d2v_reader)		
-	d2v.save(args.output)		
+	d2v.train(d2v_reader)			
+	d2v.save(args.out)		
 	#build an embedding matrix with the paragraph vectors
 	E = np.zeros((len(d2v.docvecs[0]),len(d2v.docvecs)))
 	for idx, docvec in enumerate(d2v.docvecs):
 		E[:,idx] = docvec
-	save_embeddings(args.output+".txt", E, d2v_reader.doc2idx)
-	idx_path = os.path.splitext(args.output)[0]+"_idx.pkl"
-	d2v_reader.save_idx(idx_path)
+	save_embeddings(args.out+".txt", E, d2v_reader.doc2idx)
+	d2v.wv.save_word2vec_format(args.out+"_words.txt")
 	d2v.delete_temporary_training_data()
 	print "Done"	
 
