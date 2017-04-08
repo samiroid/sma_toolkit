@@ -2,6 +2,8 @@ import argparse
 import cPickle
 from collections import Counter
 from ipdb import set_trace
+from __init__ import word_2_idx
+from embeddings import save_embeddings
 from gensim.models.word2vec import Word2Vec
 from gensim.models.ldamulticore import LdaMulticore
 from gensim.models.doc2vec import LabeledSentence
@@ -9,8 +11,6 @@ from gensim.models import Doc2Vec
 import numpy as np
 import os
 import time
-from __init__ import word_2_idx
-from embeddings import save_embeddings
 
 class Word2VecReader(object):
 	def __init__(self, datasets, max_sent=None):
@@ -144,8 +144,8 @@ def train_lda(args):
 	lda_model = LdaMulticore(lda_reader, id2word=lda_reader.idx2wrd,
 									   num_topics=args.dim, 
 									   workers=args.workers)
-	lda_model.save(args.out)	
-	idx_path =  os.path.splitext(args.out)[0]+"_idx.pkl"
+	lda_model.save(args.output)	
+	idx_path =  os.path.splitext(args.output)[0]+"_idx.pkl"
 	lda_reader.save_vocabulary(idx_path)
 	
 
@@ -164,9 +164,9 @@ def train_skipgram(args):
 	w2v_reader = Word2VecReader(args.input,args.max_sent)
 	w2v.build_vocab(w2v_reader)
 	w2v.train(w2v_reader)
-	path_out = os.path.splitext(args.out)[0]
+	path_out = os.path.splitext(args.output)[0]
 	w2v.save(path_out+".pkl")
-	w2v.save_word2vec_format(path_out+".txt")
+	w2v.wv.save_word2vec_format(path_out+".txt")
 	tend = time.time() - t0
 	mins = np.floor(tend*1./60)
 	secs = tend - mins*60
@@ -206,21 +206,21 @@ def train_paragraph2vec(args):
 		d2v.dbow_words=1	
 	
 	d2v.train(d2v_reader)		
-	d2v.save(args.out)		
+	d2v.save(args.output)		
 	#build an embedding matrix with the paragraph vectors
 	E = np.zeros((len(d2v.docvecs[0]),len(d2v.docvecs)))
 	for idx, docvec in enumerate(d2v.docvecs):
 		E[:,idx] = docvec
-	save_embeddings(args.out+".txt", E, d2v_reader.doc2idx)
-	idx_path = os.path.splitext(args.out)[0]+"_idx.pkl"
+	save_embeddings(args.output+".txt", E, d2v_reader.doc2idx)
+	idx_path = os.path.splitext(args.output)[0]+"_idx.pkl"
 	d2v_reader.save_idx(idx_path)
 	d2v.delete_temporary_training_data()
 	print "Done"	
 
 def get_parser():
 	parser = argparse.ArgumentParser(description="Induce Text Representations with Gensim")
-	parser.add_argument('-in',  type=str, required=True, nargs='+', help='datasets')        
-	parser.add_argument('-out', type=str, required=True, help='path to store the embeddings')
+	parser.add_argument('-input',  type=str, required=True, nargs='+', help='datasets')        
+	parser.add_argument('-output', type=str, required=True, help='path to store the embeddings')
 	parser.add_argument('-dim', type=int, required=True, help='size of embeddings or number of topics')
 	parser.add_argument('-model', choices=['skip','pv-dm','pv-dm-concat','pv-dbow','lda'], required=True, help='model')
 	parser.add_argument('-epochs',   type=int, default=5, help='number of epochs')
@@ -236,10 +236,10 @@ if __name__ == "__main__":
 	cmdline_parser = get_parser()
 	args = cmdline_parser.parse_args() 			
 	print "** Induce Text Representations with Gensim **"
-	print "[input > %s | max_sent: %s | workers: %d | output@%s]\n" % (repr(args.input), repr(args.max_sent), args.workers,  args.out)	
+	print "[input > %s | max_sent: %s | workers: %d | output@%s]\n" % (repr(args.input), repr(args.max_sent), args.workers,  args.output)	
 
 	#create output folder if it does not exist
-	out_folder = os.path.dirname(args.out)
+	out_folder = os.path.dirname(args.output)
 	if not os.path.exists(out_folder):		
 		os.makedirs(out_folder)
 		print "[created output folder: %s]" % out_folder		
