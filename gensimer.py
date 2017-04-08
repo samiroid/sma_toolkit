@@ -213,7 +213,7 @@ def train_paragraph2vec(args):
 	for idx, docvec in enumerate(d2v.docvecs):
 		E[:,idx] = docvec
 	save_embeddings(args.output+".txt", E, d2v_reader.doc2idx)
-	d2v.wv.save_word2vec_format(args.out+"_words.txt")
+	d2v.wv.save_word2vec_format(args.output+"_words.txt")
 	d2v.delete_temporary_training_data()
 	print "Done"	
 
