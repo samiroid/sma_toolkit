@@ -4,6 +4,7 @@ from collections import Counter
 from ipdb import set_trace
 from __init__ import word_2_idx
 from embeddings import save_embeddings
+import gensim
 from gensim.models.word2vec import Word2Vec
 from gensim.models.ldamulticore import LdaMulticore
 from gensim.models.doc2vec import LabeledSentence
@@ -11,6 +12,9 @@ from gensim.models import Doc2Vec
 import numpy as np
 import os
 import time
+
+#make sure that the correct version of gensim is installed
+assert int(gensim.__version__.split(".")[0]) >= 1, "Please upgrade Gensim to at least version 1.0.1"
 
 class Word2VecReader(object):
 	def __init__(self, datasets, max_sent=None):
@@ -24,7 +28,7 @@ class Word2VecReader(object):
 			with open(dataset) as fid:
 				for l in fid:		
 					lines+=1
-					if lines>self.max_sent: break
+					if lines>self.max_sent: raise StopIteration
 					yield l.decode("utf-8").split()
 
 class Doc2VecReader(object):
