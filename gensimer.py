@@ -3,7 +3,8 @@ import cPickle
 from collections import Counter
 from ipdb import set_trace
 from __init__ import word_2_idx
-from embeddings import save_embeddings
+import embeddings
+#from embeddings import save_embeddings
 import gensim
 from gensim.models.word2vec import Word2Vec
 from gensim.models.ldamulticore import LdaMulticore
@@ -169,8 +170,9 @@ def train_skipgram(args):
 	w2v.build_vocab(w2v_reader)
 	w2v.train(w2v_reader)
 	path_out = os.path.splitext(args.output)[0]
-	w2v.save(path_out+".pkl")
+	#w2v.save(path_out+".pkl")
 	w2v.wv.save_word2vec_format(path_out+".txt")
+	w2v.delete_temporary_training_data()
 	tend = time.time() - t0
 	mins = np.floor(tend*1./60)
 	secs = tend - mins*60
@@ -183,7 +185,7 @@ def train_paragraph2vec(args):
 	dm_concat=0	
 	if args.model == "pv-dbow":
 		dm=0
-	if args.model == "pv-dm-concat":		
+	if args.model == "pv-dmc":		
 		dm_concat=1			
 	if args.negative_samples > 0:		
 		print "[Doc2Vec > model: %s | word_vecs: %s | negative_samples: %d | min_count: %d | dim: %d | epochs: %d]" % (args.model, args.pretrained_vecs, args.negative_samples, args.min_count, args.dim, args.epochs)				
@@ -206,17 +208,17 @@ def train_paragraph2vec(args):
 		secs = tend - mins*60
 		print "\r[loaded word vectors in: %d.%d mins]" % (mins,secs)				
 	else:	
-		print "[training word vectors]"	
+		print "[train word vectors]"	
 		#also train word vectors
 		d2v.dbow_words=1		
 	
 	d2v.train(d2v_reader)			
-	d2v.save(args.output)		
+	#d2v.save(args.output)		
 	#build an embedding matrix with the paragraph vectors
 	E = np.zeros((len(d2v.docvecs[0]),len(d2v.docvecs)))
 	for idx, docvec in enumerate(d2v.docvecs):
 		E[:,idx] = docvec
-	save_embeddings(args.output+".txt", E, d2v_reader.doc2idx)
+	embeddings.save_txt(args.output+".txt", E, d2v_reader.doc2idx)
 	d2v.wv.save_word2vec_format(args.output+"_words.txt")
 	d2v.delete_temporary_training_data()
 	print "Done"	
@@ -226,7 +228,7 @@ def get_parser():
 	parser.add_argument('-input',  type=str, required=True, nargs='+', help='datasets')        
 	parser.add_argument('-output', type=str, required=True, help='path to store the embeddings')
 	parser.add_argument('-dim', type=int, required=True, help='size of embeddings or number of topics')
-	parser.add_argument('-model', choices=['skip','pv-dm','pv-dm-concat','pv-dbow','lda'], required=True, help='model')
+	parser.add_argument('-model', choices=['skip','pv-dm','pv-dmc','pv-dbow','lda'], required=True, help='model')
 	parser.add_argument('-epochs',   type=int, default=5, help='number of epochs')
 	parser.add_argument('-workers',  type=int, default=4, help='number of workers')
 	parser.add_argument('-max_sent', type=int, help='set max number of sentences to be read (per file)')
@@ -250,7 +252,7 @@ if __name__ == "__main__":
 
 	if args.model =="lda":
 		train_lda(args)
-	elif args.model in ["pv-dm","pv-dbow","pv-dm-concat"]:
+	elif args.model in ["pv-dm","pv-dbow","pv-dmc"]:
 		train_paragraph2vec(args)
 	elif args.model == "skip":
 		train_skipgram(args)

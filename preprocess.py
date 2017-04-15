@@ -1,14 +1,24 @@
 import argparse
-import re
 from ext import twokenize
 from ext.tweetokenize import Tokenizer
+import numpy as np
+import re
 import sys
-
 
 # emoticon regex taken from Christopher Potts' script at http://sentiment.christopherpotts.net/tokenizing.html
 emoticon_regex = r"""(?:[<>]?[:;=8][\-o\*\']?[\)\]\(\[dDpP/\:\}\{@\|\\]|[\)\]\(\[dDpP/\:\}\{@\|\\][\-o\*\']?[:;=8][<>]?)"""
 
 twk = Tokenizer(ignorequotes=False,usernames=False,urls=False,numbers=False)
+
+def feature_scale(x, axis, mode='std'):
+
+    if mode == 'std':
+        std_x = (x - np.mean(x,axis=axis))/np.std(x,axis=axis)      
+        return std_x
+    elif mode == 'unit':
+        unit_x = x/np.sqrt(np.sum(x**2,axis=axis))      
+        return unit_x
+
 
 def max_reps(sentence, n=3):
 
