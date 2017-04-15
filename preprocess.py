@@ -10,15 +10,14 @@ emoticon_regex = r"""(?:[<>]?[:;=8][\-o\*\']?[\)\]\(\[dDpP/\:\}\{@\|\\]|[\)\]\(\
 
 twk = Tokenizer(ignorequotes=False,usernames=False,urls=False,numbers=False)
 
-def feature_scale(x, axis, mode='std'):
-
+def rescale_features(x, axis, mode='std'):
+    assert mode in ['std','unit'], "Unknown mode: accepted modes are 'std' and 'unit'"
+    new_x = None
     if mode == 'std':
-        std_x = (x - np.mean(x,axis=axis))/np.std(x,axis=axis)      
-        return std_x
+        new_x = (x - np.mean(x,axis=axis))/np.std(x,axis=axis)              
     elif mode == 'unit':
-        unit_x = x/np.sqrt(np.sum(x**2,axis=axis))      
-        return unit_x
-
+        new_x = x/np.sqrt(np.sum(x**2,axis=axis))              
+    return new_x
 
 def max_reps(sentence, n=3):
 
