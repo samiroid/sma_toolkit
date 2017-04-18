@@ -1,7 +1,7 @@
 import argparse 
 import codecs
 import os
-from ipdb import set_trace
+from pdb import set_trace
 ### LEXICON PARSERS 
 
 def parse_NRCEmolex(path_in, path_out):    
@@ -94,7 +94,7 @@ def parse_NRCEmolex(path_in, path_out):
     			emolex_fear, emolex_joy, emolex_sadness, emolex_surprise, emolex_trust]    
 
     for emo, lex in zip(emotions, lexicons):
-    	out_file = path_out + "emolex_"+emo+".txt"        
+    	out_file = path_out + emo + ".txt"        
     	save_lexicon(lex, out_file)
 
 def parse_opinion_mining_lex(path_in, path_out):    
@@ -159,33 +159,31 @@ def save_lexicon(lex, path_out):
             fod.write(u"%s\t%s\n" % (wrd,str(lab)))
 
 def parse_lex(path_in, path_out, word_pos=0, label_pos=1, sep='\t',skip_first=False):
-    
-    with open(path_in) as fid:        
+    lex = read_lex(path_in,word_pos,label_pos,sep,skip_first)
+    save_lexicon(lex, path_out)    
+
+def read_lex(path_in, word_pos=0, label_pos=1, sep='\t',skip_first=False):
+    """
+    	Read a lexicon
+    	word_pos: index of the word
+    	label_pos: index of the label
+    	sep: separator token
+    	skip_first: if True, ignore the first line
+    """
+    ignored=[]
+    with open(path_in) as fid:
         lex = {}
         if skip_first:
             fid.readline()
         for l in fid:
-            datum = l.split(sep)
-            lex[datum[word_pos]] = float(datum[label_pos])      
-    
-    save_lexicon(lex, path_out)
-    
-
-def read_lex(path_in, word_pos=0, label_pos=1, sep='\t',skip_first=False):
-	"""
-		Read a lexicon
-		word_pos: index of the word
-		label_pos: index of the label
-		sep: separator token
-		skip_first: if True, ignore the first line
-	"""
-	with open(path_in) as fid:		
-		lex = {}
-		if skip_first:
-			fid.readline()
-		for l in fid:
-			datum = l.split(sep)
-			lex[datum[word_pos]] = float(datum[label_pos])		
+            try:
+                datum = l.split(sep)
+                lex[datum[word_pos]] = float(datum[label_pos])
+            except:
+                ignored.append(l)
+        print "ignored ", ignored
+        #print "".join(ignored)
+        
 	return lex
 
 

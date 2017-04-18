@@ -19,6 +19,11 @@ def rescale_features(x, axis, mode='std'):
         new_x = x/np.sqrt(np.sum(x**2,axis=axis))              
     return new_x
 
+def rescale_torange(X,old_min,old_max,new_min,new_max):
+    w = (new_max-new_min)/(old_max-old_min)
+    new_X = ((X-old_max)*w)+new_max
+    return new_X
+
 def max_reps(sentence, n=3):
 
     """

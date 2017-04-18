@@ -103,7 +103,7 @@ def read_embeddings(path, wrd2idx=None, max_words=None):
     idx2wrd = idx_2_wrd(wrd2idx)
     ooevs = [idx2wrd[idx] for idx in ooev_idx]
     
-    return E, ooevs, wrd2idx
+    return E, wrd2idx, ooevs
 
 def filter_embeddings(path_in, path_out, wrd2idx):
 
