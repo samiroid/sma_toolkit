@@ -113,9 +113,9 @@ class LDAReader(object):
 	def get_topics(self, doc, binary=False):
 		assert self.model is not None, "Model not found! Please did you forget to load_model() ?"
 		feats = np.zeros(self.model.num_topics)
-		topics = self.model.get_document_topics(self.features(doc))
+		topics = self.model.get_document_topics(self.features(doc))		
 		for t in topics:
-			feats[t[0]] = t[1] if binary else 0
+			feats[t[0]] =  1 if binary else t[1]
 		return feats
 
 	def compute_vocabulary(self):
