@@ -4,6 +4,8 @@ from __init__ import idx_2_wrd
 import numpy as np
 import theano 
 import theano.tensor as T
+from sklearn.decomposition import PCA
+
 
 class Emb_Mapper():
 
@@ -98,12 +100,16 @@ def read_embeddings(path, wrd2idx=None, max_words=None):
     perc = n_OOEV*100./len(wrd2idx)
     print ("%d/%d (%2.2f %%) words in vocabulary found no embedding" 
            % (n_OOEV, len(wrd2idx), perc)) 
+    
+    return E, wrd2idx
+
+def get_OOEVs(E, wrd2idx):
 
     ooev_idx = np.where(~E.any(axis=0))[0]
     idx2wrd = idx_2_wrd(wrd2idx)
-    ooevs = [idx2wrd[idx] for idx in ooev_idx]
-    
-    return E, wrd2idx, ooevs
+    OOEVs = [idx2wrd[idx] for idx in ooev_idx]
+
+    return OOEVs
 
 def filter_embeddings(path_in, path_out, wrd2idx):
 
@@ -134,6 +140,47 @@ def save_txt(path, E, wrd2idx):
         for word, idx in wrd2idx.items():      
             emb = E[:,idx]
             fod.write("%s %s\n" % (word, " ".join(map(str, emb))))
+
+
+def project_vectors(X_in, model='tsne',perp=10):
+    from tsne import bh_sne    
+    if model == 'tsne':
+        X_in = X_in.reshape((X_in.shape[0], -1)).astype('float64')
+        if perp is not None:
+            X_out = bh_sne(X_in, perplexity=perp)    
+        else:
+            X_out = bh_sne(X_in)    
+    elif model == 'pca':
+        pca = PCA(n_components=2,whiten=True)
+        pca.fit(X_in)
+        X_out = pca.transform(X_in)        
+    else:
+        raise NotImplementedError
+    
+    return X_out
+
+def similarity_rank(X, wrd2idx,top_k=None,max_users=None):        
+
+    items = wrd2idx.keys()#[:max_users]
+    idxs  = wrd2idx.values()#[:max_users]
+    if top_k is None:
+        top_k = len(idxs)
+    item_ranking = np.zeros((top_k,len(idxs)))
+    sim_scores = np.zeros((top_k,len(idxs)))
+    
+    for i, u in enumerate(idxs):
+        emb = X[:,u]
+        #similarities
+        simz = np.dot(X.T,emb)/(np.linalg.norm(X.T)*np.linalg.norm(emb))
+        #user maximally similar to itself
+        simz[u] = 1
+        rank = np.argsort(simz)[::-1]
+        ranked_simz = simz[rank]
+        item_ranking[:,i] = rank[:top_k]
+        sim_scores[:,i]   = ranked_simz[:top_k]
+
+    return items, idxs, item_ranking, sim_scores
+
 
 # def filter_embeddings(path_in, path_out, wrd2idx):
 
